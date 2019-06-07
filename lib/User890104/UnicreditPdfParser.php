@@ -20,7 +20,7 @@ class UnicreditPdfParser
     /**
      *
      */
-    const FORMAT_TRANSACTION_ID = '/^(?:299|800)(?:[A-Z\d]{13})$/';
+    const FORMAT_TRANSACTION_ID = '/^\d{3}[A-Z\d]{13}$/';
     /**
      *
      */
@@ -95,7 +95,7 @@ class UnicreditPdfParser
                 $otherId = substr($type, $pos + 1);
 
                 if (preg_match(static::FORMAT_TRANSACTION_ID, $otherId)) {
-                    $transaction['other_id'] = $otherId;
+                    $transaction['id_other'] = $otherId;
                     $type = substr($type, 0, $pos);
                 }
             }
@@ -190,7 +190,7 @@ class UnicreditPdfParser
 
                 if ($state === 0 && preg_match(static::FORMAT_DATE, $line)) {
                     $state = 1;
-                    $transaction['date1'] = $line;
+                    $transaction['date_transaction'] = $line;
                     continue;
                 }
 
@@ -214,7 +214,7 @@ class UnicreditPdfParser
                 if ($state === 4) {
                     if (preg_match(static::FORMAT_DATE, $line)) {
                         $state = 5;
-                        $transaction['date2'] = $line;
+                        $transaction['date_value'] = $line;
                     }
                     else {
                         $description[] = $line;
