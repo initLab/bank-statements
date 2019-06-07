@@ -1,0 +1,16 @@
+{
+  "require": {
+    "smalot/pdfparser": "^0.14.0",
+    "ext-iconv": "*",
+    "ext-json": "*",
+    "ssilence/php-imap-client": "dev-master",
+    "ext-imap": "*",
+    "globalcitizen/php-iban": "v2.6.9",
+    "vlucas/phpdotenv": "3.2.x-dev"
+  },
+  "autoload": {
+    "psr-4": {
+      "User890104\\": "lib/User890104"
+    }
+  }
+}
