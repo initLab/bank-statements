@@ -23,7 +23,9 @@ $parser = new UnicreditPdfParser;
 $mail->parseMessageAttachments(
     $filenamePattern,
     getenv('MAIL_FOLDER_DESTINATION'),
-    function ($filename) use ($parser) {
+    function ($filename, $attachmentName) use ($parser) {
+        // debug
+        //copy($filename, $attachmentName);
         $transactions = $parser->parseFile($filename);
         echo json_encode($transactions, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     }

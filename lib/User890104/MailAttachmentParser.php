@@ -63,7 +63,7 @@ class MailAttachmentParser
                 $metadata = stream_get_meta_data($fp);
                 $filename = $metadata['uri'];
                 fwrite($fp, $attachment->body);
-                $callback($filename);
+                $callback($filename, $attachment->name);
                 fclose($fp);
             }
 
