@@ -3,6 +3,7 @@
 
 namespace User890104;
 
+use DateTime;
 use Exception;
 use Smalot\PdfParser\Document;
 use Smalot\PdfParser\Parser as PdfParser;
@@ -71,6 +72,11 @@ class UnicreditPdfParser
         }
     }
 
+    protected static function parseDate(string $dateStr): DateTime
+    {
+        return DateTime::createFromFormat('d.m.Y', $dateStr);
+    }
+
     /**
      * @param array $transaction
      * @param string $desc
@@ -106,58 +112,56 @@ class UnicreditPdfParser
 
         $parts = explode($sep, $desc, 2);
 
-        if (count($parts) !== 2) {
-            return;
-        }
+        if (count($parts) === 2) {
+            $sender = $parts[0];
+            $desc = $parts[1];
 
-        $sender = $parts[0];
-        $desc = $parts[1];
-
-        $pos = strrpos($sender, ' ');
-        if ($pos !== false) {
-            $lastPart = substr($sender, $pos + 1);
-
-            $isBic = preg_match(static::FORMAT_BIC, $lastPart);
-            $isLocalAcc = preg_match(static::FORMAT_LOCAL_ACC, $lastPart);
-
-            if ($isBic) {
-                $transaction['bic'] = $lastPart;
-            }
-            elseif ($isLocalAcc) {
-                $iban = 'BG00UNCR' . $lastPart;
-                $transaction['iban'] = iban_set_checksum($iban);
-            }
-
-            if ($isBic || $isLocalAcc) {
-                $sender = substr($sender, 0, $pos);
-            }
-        }
-
-        $transaction['sender'] = $sender;
-
-        if (strpos($desc, $sep) === 0) {
-            $desc = str_replace($sep, '', $desc);
-        }
-
-        $parts = explode($sep, $desc);
-        if (count($parts) === 2 && preg_match(static::FORMAT_IBAN, $parts[0])) {
-            $transaction['iban'] = $parts[0];
-            $transaction['reason'] = $parts[1];
-        }
-        else {
-            $reason = $parts[0];
-            $pos = strpos($reason, ' ');
-
+            $pos = strrpos($sender, ' ');
             if ($pos !== false) {
-                $iban = substr($reason, 0, $pos);
+                $lastPart = substr($sender, $pos + 1);
 
-                if (preg_match(static::FORMAT_IBAN, $iban)) {
-                    $transaction['iban'] = $iban;
-                    $reason = substr($reason, $pos + 1);
+                $isBic = preg_match(static::FORMAT_BIC, $lastPart);
+                $isLocalAcc = preg_match(static::FORMAT_LOCAL_ACC, $lastPart);
+
+                if ($isBic) {
+                    $transaction['bic'] = $lastPart;
+                }
+                elseif ($isLocalAcc) {
+                    $iban = 'BG00UNCR' . $lastPart;
+                    $transaction['iban'] = iban_set_checksum($iban);
+                }
+
+                if ($isBic || $isLocalAcc) {
+                    $sender = substr($sender, 0, $pos);
                 }
             }
 
-            $transaction['reason'] = $reason;
+            $transaction['sender'] = $sender;
+
+            if (strpos($desc, $sep) === 0) {
+                $desc = str_replace($sep, '', $desc);
+            }
+
+            $parts = explode($sep, $desc);
+            if (count($parts) === 2 && preg_match(static::FORMAT_IBAN, $parts[0])) {
+                $transaction['iban'] = $parts[0];
+                $transaction['reason'] = $parts[1];
+            }
+            else {
+                $reason = $parts[0];
+                $pos = strpos($reason, ' ');
+
+                if ($pos !== false) {
+                    $iban = substr($reason, 0, $pos);
+
+                    if (preg_match(static::FORMAT_IBAN, $iban)) {
+                        $transaction['iban'] = $iban;
+                        $reason = substr($reason, $pos + 1);
+                    }
+                }
+
+                $transaction['reason'] = $reason;
+            }
         }
     }
 
@@ -190,7 +194,7 @@ class UnicreditPdfParser
 
                 if ($state === 0 && preg_match(static::FORMAT_DATE, $line)) {
                     $state = 1;
-                    $transaction['date_transaction'] = $line;
+                    $transaction['date_transaction'] = static::parseDate($line);
                     continue;
                 }
 
@@ -214,7 +218,7 @@ class UnicreditPdfParser
                 if ($state === 4) {
                     if (preg_match(static::FORMAT_DATE, $line)) {
                         $state = 5;
-                        $transaction['date_value'] = $line;
+                        $transaction['date_value'] = static::parseDate($line);
                     }
                     else {
                         $description[] = $line;
