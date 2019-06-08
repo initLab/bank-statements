@@ -1,14 +1,11 @@
 <?php
-require 'vendor/autoload.php';
+require __DIR__ . '/config/bootstrap.php';
 
-use Dotenv\Dotenv;
+use Builders\TransactionBuilder;
 use User890104\MailAttachmentParser;
 use User890104\UnicreditPdfParser;
 
 header('Content-Type: text/plain; charset=utf-8');
-
-$dotenv = Dotenv::create(__DIR__);
-$dotenv->load();
 
 $mail = new MailAttachmentParser(
     getenv('MAIL_HOSTNAME'),
@@ -23,10 +20,21 @@ $parser = new UnicreditPdfParser;
 $mail->parseMessageAttachments(
     $filenamePattern,
     getenv('MAIL_FOLDER_DESTINATION'),
-    function ($filename, $attachmentName) use ($parser) {
+    function ($filename, $attachmentName) use ($parser, $entityManager) {
         // debug
         //copy($filename, $attachmentName);
         $transactions = $parser->parseFile($filename);
-        echo json_encode($transactions, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        // debug
+        //echo json_encode($transactions, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        foreach ($transactions as $transaction) {
+            if (!array_key_exists('iban', $transaction)) {
+                continue;
+            }
+
+            $transactionEntity = TransactionBuilder::buildEntity($transaction);
+            $entityManager->persist($transactionEntity);
+        }
     }
 );
+
+$entityManager->flush();
