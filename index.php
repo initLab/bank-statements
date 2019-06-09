@@ -2,6 +2,7 @@
 require __DIR__ . '/config/bootstrap.php';
 
 use Builders\TransactionBuilder;
+use Entities\Transaction;
 use User890104\MailAttachmentParser;
 use User890104\UnicreditPdfParser;
 
@@ -28,6 +29,12 @@ $mail->parseMessageAttachments(
         //echo json_encode($transactions, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
         foreach ($transactions as $transaction) {
             if (!array_key_exists('iban', $transaction)) {
+                continue;
+            }
+
+            $transactionEntity = $entityManager->find(Transaction::class, $transaction['id']);
+
+            if ($transactionEntity instanceof Transaction) {
                 continue;
             }
 
