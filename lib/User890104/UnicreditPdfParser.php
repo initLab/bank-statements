@@ -33,7 +33,7 @@ class UnicreditPdfParser
     /**
      *
      */
-    const FORMAT_IBAN = '/^[A-Z]{2}\d{2}[A-Z]{4}\d{14}$/';
+    const FORMAT_IBAN = '/^[A-Z]{2}\d{2}[A-Z]{4}\d{6}[A-Z0-9]{8}$/';
     /**
      *
      */
