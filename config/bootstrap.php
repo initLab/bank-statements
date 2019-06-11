@@ -14,7 +14,7 @@ $entityPaths = [
 $isDevMode = true;
 $dbParams = [];
 
-foreach (['driver', 'user', 'password', 'path', 'dbname'] as $param) {
+foreach (['driver', 'host', 'port', 'user', 'password', 'path', 'dbname'] as $param) {
 	$value = getenv('DB_' . strtoupper($param));
 	
 	if ($value === false || strlen($value) === 0) {
