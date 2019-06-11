@@ -12,12 +12,17 @@ $entityPaths = [
     __DIR__ . '/../src/Entities',
 ];
 $isDevMode = true;
-$dbParams = array(
-    'driver'   => getenv('DB_DRIVER'),
-    'user'     => getenv('DB_USERNAME'),
-    'password' => getenv('DB_PASSWORD'),
-    'path'   => getenv('DB_PATH'),
-);
+$dbParams = [];
+
+foreach (['driver', 'username', 'password', 'path', 'dbname'] as $param) {
+	$value = getenv('DB_' . strtoupper($param));
+	
+	if ($value === false || strlen($value) === 0) {
+		continue;
+	}
+	
+	$dbParams[$param] = $value;
+}
 
 $config = Setup::createAnnotationMetadataConfiguration($entityPaths, $isDevMode);
 $entityManager = EntityManager::create($dbParams, $config);
