@@ -6,6 +6,7 @@ namespace User890104;
 use DateTime;
 use Exception;
 use Smalot\PdfParser\Document;
+use Smalot\PdfParser\Page;
 use Smalot\PdfParser\Parser as PdfParser;
 
 /**
@@ -63,15 +64,23 @@ class UnicreditPdfParser
     /**
      * @param string $str
      * @param string $suffix
+     * @return bool
      */
     protected static function removeSuffix(string &$str, string $suffix) {
-        $pos = strpos($str, $suffix);
+        $pos = strrpos($str, $suffix);
 
         if ($pos === strlen($str) - strlen($suffix)) {
             $str = substr($str, 0, $pos);
+			return true;
         }
+		
+		return false;
     }
 
+    /**
+     * @param string $dateStr
+     * @return DateTime
+     */
     protected static function parseDate(string $dateStr): DateTime
     {
         return DateTime::createFromFormat('d.m.Y', $dateStr);
@@ -80,8 +89,27 @@ class UnicreditPdfParser
     /**
      * @param array $transaction
      * @param string $desc
+     * @param int $version
+     * @throws Exception
      */
-    protected static function parseDescription(array &$transaction, string $desc) {
+    protected static function parseDescription(array &$transaction, string $desc, int $version) {
+        switch ($version) {
+            case 1:
+                static::parseDescriptionV1($transaction, $desc);
+                break;
+            case 2:
+                static::parseDescriptionV2($transaction, $desc);
+                break;
+            default:
+                throw new Exception('Unsupported version: ' . $version);
+        }
+    }
+
+    /**
+     * @param array $transaction
+     * @param string $desc
+     */
+    protected static function parseDescriptionV1(array &$transaction, string $desc) {
         $sep = ' / ';
 
         if (strpos($desc, '-') === 0) {
@@ -123,10 +151,7 @@ class UnicreditPdfParser
                 $isBic = preg_match(static::FORMAT_BIC, $lastPart);
                 $isLocalAcc = preg_match(static::FORMAT_LOCAL_ACC, $lastPart);
 
-                if ($isBic) {
-                    $transaction['bic'] = $lastPart;
-                }
-                elseif ($isLocalAcc) {
+                if (!$isBic && $isLocalAcc) {
                     $iban = 'BG00UNCR' . $lastPart;
                     $transaction['iban'] = iban_set_checksum($iban);
                 }
@@ -166,6 +191,65 @@ class UnicreditPdfParser
     }
 
     /**
+     * @param array $transaction
+     * @param string $desc
+     */
+    protected static function parseDescriptionV2(array &$transaction, string $desc) {
+        $sep = ' / ';
+
+        if (strpos($desc, '-') === 0) {
+            $desc = substr($desc, 1);
+        }
+
+        static::removeSuffix($desc, ' /');
+
+        /** @noinspection PhpStatementHasEmptyBodyInspection */
+        while (static::removeSuffix($desc, $sep));
+
+        static::removeSuffix($desc, ' 00');
+
+        $parts = explode($sep, $desc, 3);
+
+        if (count($parts) === 3) {
+            // part 1
+            $typeAndRef = $parts[0];
+            $pos = strrpos($typeAndRef, ' ');
+
+            if ($pos !== false) {
+                $otherId = substr($typeAndRef, $pos + 1);
+
+                if (preg_match(static::FORMAT_TRANSACTION_ID, $otherId)) {
+                    $transaction['id_other'] = $otherId;
+                    $transaction['type'] = substr($typeAndRef, 0, $pos);
+                }
+            }
+
+            // part 2
+            $transaction['iban'] = $parts[1];
+
+            // part 3
+            $senderAndReason = $parts[2];
+
+            // Sorry about this
+            $pos = strpos($senderAndReason, ' ');
+
+            if ($pos !== false) {
+                $pos = strpos($senderAndReason, ' ', $pos + 1);
+
+                if ($pos !== false) {
+                    $pos = strpos($senderAndReason, ' ', $pos + 1);
+
+                    if ($pos !== false) {
+                        // Still not given up?
+                        $transaction['sender'] = substr($senderAndReason, 0, $pos);
+                        $transaction['reason'] = substr($senderAndReason, $pos + 1);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * @param string $filename
      * @return array
      * @throws Exception
@@ -185,56 +269,67 @@ class UnicreditPdfParser
         $transaction = [];
         $description = [];
 
-        foreach ($pages as $page) {
-            $lines = $page->getTextArray();
-
-            foreach ($lines as $line) {
+        $lines = array_merge(...array_map(function($page) {
+            /**
+             * @var Page $page
+             */
+            return array_map(function($line) {
                 $line = iconv('utf-8', 'cp1252', $line);
-                $line = iconv('cp1251', 'utf-8', $line);
+                return iconv('cp1251', 'utf-8', $line);
+            }, $page->getTextArray());
+        }, array_values($pages)));
 
-                if ($state === 0 && preg_match(static::FORMAT_DATE, $line)) {
-                    $state = 1;
-                    $transaction['date_transaction'] = static::parseDate($line);
-                    continue;
-                }
+        $version = 1;
 
-                if ($state === 1 && preg_match(static::FORMAT_TRANSACTION_ID, $line)) {
-                    $state = 2;
-                    $transaction['id'] = $line;
-                    continue;
-                }
+        $v2Text = 'Детайлна информация за Вашите трансакции за периода';
 
-                if ($state === 2 && $line === '') {
-                    $state = 3;
-                    continue;
-                }
+        if (in_array($v2Text, $lines)) {
+            $version = 2;
+        }
 
-                if ($state === 3 && preg_match(static::FORMAT_AMOUNT, $line)) {
-                    $state = 4;
-                    $transaction['amount'] = floatval($line);
-                    continue;
-                }
-
-                if ($state === 4) {
-                    if (preg_match(static::FORMAT_DATE, $line)) {
-                        $state = 5;
-                        $transaction['date_value'] = static::parseDate($line);
-                    }
-                    else {
-                        $description[] = $line;
-                    }
-                    continue;
-                }
-
-                if ($state === 5 && $line === '/') {
-                    static::parseDescription($transaction, implode(' ', $description));
-                    $transactions[] = $transaction;
-                }
-
-                $state = 0;
-                $transaction = [];
-                $description = [];
+        foreach ($lines as $line) {
+            if ($state === 0 && preg_match(static::FORMAT_DATE, $line)) {
+                $state = 1;
+                $transaction['date_transaction'] = static::parseDate($line);
+                continue;
             }
+
+            if ($state === 1 && preg_match(static::FORMAT_TRANSACTION_ID, $line)) {
+                $state = 2;
+                $transaction['id'] = $line;
+                continue;
+            }
+
+            if ($state === 2 && $line === '') {
+                $state = 3;
+                continue;
+            }
+
+            if ($state === 3 && preg_match(static::FORMAT_AMOUNT, $line)) {
+                $state = 4;
+                $transaction['amount'] = floatval($line);
+                continue;
+            }
+
+            if ($state === 4) {
+                if (preg_match(static::FORMAT_DATE, $line)) {
+                    $state = 5;
+                    $transaction['date_value'] = static::parseDate($line);
+                }
+                else {
+                    $description[] = $line;
+                }
+                continue;
+            }
+
+            if ($state === 5 && $line === '/') {
+                static::parseDescription($transaction, implode(' ', $description), $version);
+                $transactions[] = $transaction;
+            }
+
+            $state = 0;
+            $transaction = [];
+            $description = [];
         }
 
         return $transactions;

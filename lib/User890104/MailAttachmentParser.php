@@ -13,6 +13,13 @@ class MailAttachmentParser
 {
     protected $imap;
 
+    /**
+     * MailAttachmentParser constructor.
+     * @param string $hostname
+     * @param string $username
+     * @param string $password
+     * @param string $mailbox
+     */
     public function __construct(string $hostname, string $username, string $password, string $mailbox)
     {
         $this->imap = new ImapClient([
@@ -30,6 +37,11 @@ class MailAttachmentParser
         ]);
     }
 
+    /**
+     * @param string $filenamePattern
+     * @param string $destinationMailbox
+     * @param callable $callback
+     */
     public function parseMessageAttachments(string $filenamePattern, string $destinationMailbox, callable $callback)
     {
         $messages = $this->imap->getMessages();

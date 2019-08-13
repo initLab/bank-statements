@@ -56,12 +56,6 @@ class Transaction
 
     /**
      * @var string
-     * @Column(type="string", length=8, nullable=true)
-     */
-    protected $bic;
-
-    /**
-     * @var string
      * @Column(type="string", length=34)
      */
     protected $iban;
@@ -172,22 +166,6 @@ class Transaction
     public function setSender(string $sender): void
     {
         $this->sender = $sender;
-    }
-
-    /**
-     * @return string
-     */
-    public function getBic(): string
-    {
-        return $this->bic;
-    }
-
-    /**
-     * @param string $bic
-     */
-    public function setBic(string $bic): void
-    {
-        $this->bic = $bic;
     }
 
     /**

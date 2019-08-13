@@ -8,6 +8,10 @@ use Entities\Transaction;
 
 class TransactionBuilder
 {
+    /**
+     * @param array $data
+     * @return Transaction
+     */
     public static function buildEntity(array $data): Transaction
     {
         $transaction = new Transaction;
@@ -21,11 +25,6 @@ class TransactionBuilder
         $transaction->setDateValue($data['date_value']);
         $transaction->setType($data['type']);
         $transaction->setSender($data['sender']);
-
-        if (array_key_exists('bic', $data)) {
-            $transaction->setBic($data['bic']);
-        }
-
         $transaction->setIban($data['iban']);
         $transaction->setAmount($data['amount']);
         $transaction->setReason($data['reason']);
