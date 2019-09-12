@@ -247,6 +247,31 @@ class UnicreditPdfParser
                 }
             }
         }
+        else {
+            $parts = explode(' Основание: ', $desc);
+
+            if (count($parts) === 2) {
+                $parts2 = explode(' Контрагент : ', $parts[1]);
+
+                if (count($parts2) === 2) {
+                    $transaction['type'] = $parts[0];
+                    $transaction['reason'] = $parts2[0];
+
+                    $pos = strrpos($parts2[1], ' ');
+
+                    if ($pos !== false) {
+                        $sender = substr($parts2[1], 0, $pos);
+                        $localAcc = substr($parts2[1], $pos + 1);
+
+                        if (preg_match(static::FORMAT_LOCAL_ACC, $localAcc)) {
+                            $transaction['sender'] = $sender;
+                            $iban = 'BG00UNCR' . $localAcc;
+                            $transaction['iban'] = iban_set_checksum($iban);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /**
