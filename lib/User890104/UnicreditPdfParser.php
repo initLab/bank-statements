@@ -210,7 +210,7 @@ class UnicreditPdfParser
 
         $parts = explode($sep, $desc, 3);
 
-        if (count($parts) === 3) {
+        if (count($parts) === 3 && $parts[1] !== '') {
             // part 1
             $typeAndRef = $parts[0];
             $pos = strrpos($typeAndRef, ' ');
@@ -251,10 +251,11 @@ class UnicreditPdfParser
             $parts = explode(' Основание: ', $desc);
 
             if (count($parts) === 2) {
+                $transaction['type'] = $parts[0];
+
                 $parts2 = explode(' Контрагент : ', $parts[1]);
 
                 if (count($parts2) === 2) {
-                    $transaction['type'] = $parts[0];
                     $transaction['reason'] = $parts2[0];
 
                     $pos = strrpos($parts2[1], ' ');
@@ -268,6 +269,15 @@ class UnicreditPdfParser
                             $iban = 'BG00UNCR' . $localAcc;
                             $transaction['iban'] = iban_set_checksum($iban);
                         }
+                    }
+                }
+                elseif ($parts[0] === 'Вноска на каса') {
+                    $parts2 = explode($sep, $parts[1]);
+
+                    if (count($parts2) >= 2) {
+                        $transaction['reason'] = array_shift($parts2);
+                        $transaction['sender'] = array_pop($parts2);
+                        $transaction['iban'] = null;
                     }
                 }
             }
