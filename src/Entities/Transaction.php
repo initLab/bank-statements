@@ -55,8 +55,8 @@ class Transaction
     protected $sender;
 
     /**
-     * @var string
-     * @Column(type="string", length=34)
+     * @var string|null
+     * @Column(type="string", length=34, nullable=true)
      */
     protected $iban;
 
@@ -169,17 +169,17 @@ class Transaction
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getIban(): string
+    public function getIban(): ?string
     {
         return $this->iban;
     }
 
     /**
-     * @param string $iban
+     * @param string|null $iban
      */
-    public function setIban(string $iban): void
+    public function setIban(?string $iban): void
     {
         $this->iban = $iban;
     }
