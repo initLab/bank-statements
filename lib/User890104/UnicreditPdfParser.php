@@ -83,7 +83,7 @@ class UnicreditPdfParser
      */
     protected static function parseDate(string $dateStr): DateTime
     {
-        return DateTime::createFromFormat('d.m.Y', $dateStr);
+        return DateTime::createFromFormat('d.m.Y', $dateStr)->setTime(0, 0);
     }
 
     /**
